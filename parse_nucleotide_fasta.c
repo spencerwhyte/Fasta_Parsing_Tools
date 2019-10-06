@@ -8,14 +8,8 @@ typedef struct Flags {
     char flag_value[100];
 } flag;
 
-// can you initialize structs in a function and have them work??
-/* int initialize_flags() {
-    struct Flags filename;
-    struct Flags others.
-}*/
-
 /******************************
-*   ensure input it workable
+*   Ensures input is workable.
 *******************************/
 int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) {
     if (argcount == 1) {
@@ -47,19 +41,17 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
             case 'f':
                 argument_legality = 0;
                 flags[0].flag_raised = 1;
-                //flags[0].flag_value = optarg;
                 strcpy(flags[0].flag_value, optarg);
                 printf("File %s passed in.\n", optarg);
                 break;
             case 'c':
                 argument_legality = 0;
                 flags[1].flag_raised = 1;
-                printf("optarg %s\n", optarg);
                 if (optarg == NULL) {
                     printf("Calculating global GC content.\n");
                 } else {
-                strcpy(flags[1].flag_value, optarg);
-                printf("Calculating GC content per %s nucleotides\n", optarg);
+                    strcpy(flags[1].flag_value, optarg);
+                    printf("Calculating GC content per %s nucleotides\n", optarg);
                 }
                 break;
             case 'k':
@@ -106,75 +98,107 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
     return argument_legality;
 }
 
+
+
 /******************************
-*   read through fasta file
+*   Skips the > lines in a fasta file
 *******************************/
-int parse_fasta(struct Flags* flags) {
-    // this program opens the file and reads through each line, It will pass the lines to other functions which do stuff
-    char prev_read[600];
-    char curr_read[600];
-    sequence_number = 0;
-    FILE* file = fopen(flags[0].flag_value, "r");
-    while (!feof(file)) {
-        fscanf(file, "%s\n", read);
-        // remember to skip the sequence identifier lines
-
-        if (flags[])
-    }
-
-    fclose(file);
+int skip_info_lines() {
     return 0;
 }
-int skip_info_lines() {
-    // skips the > lines in a fasta file
-}
 
-int GC_count() {
+/******************************
+*   Counts the GC content in the read passed into the function. 
+*******************************/
+int GC_count(struct Flags* flags, char* read, int* site_values, int chunk_num, int chunk_val) {
     // counts GC content per X bases
-        site_index = 0;
+    int site_index = 0;
     while (read[site_index] != '\0') {
-        if(count == chunk_val) {
-           printf("Chunk num: %d A: %d T: %d C: %d G:%d\n", chunk_num, count_a, count_t, count_c, count_g);
-           printf("Chunk: %d GC content: %f\n", chunk_num, (((float)count_c + (float)count_g) / (float)count) * 100);
-           count = 0;
-           count_a = 0;
-           count_t = 0;
-           count_c = 0;
-           count_g = 0;
-           chunk_num++;
+        if(site_values[4] == chunk_val && chunk_val != 0) {
+            printf("Chunk number: %d A: %d T: %d C: %d G:%d\n", chunk_num, site_values[0], site_values[1], site_values[2], site_values[3]);
+            printf("Chunk: %d GC content: %f\n", chunk_num, (((float)site_values[2] + (float)site_values[3]) / (float)site_values[4]) * 100);
+            int i;
+            for (i = 0; i < 5; i++) {
+                site_values[i] = 0;
+            }
+            chunk_num++;
         }
         char site = read[site_index];
-        if (site == 'A') {
-            count_a++;
-            count++;
-        } else if (site == 'T') {
-            count_t++;
-            count++;
-        } else if (site == 'C') {
-            count_c++;
-            count++;
-        } else if (site == 'G') {
-            count_g++;
-            count++;
+        if (site == 'A' || site == 'a') {
+            site_values[0]++;
+            site_values[4]++;
+        } else if (site == 'T' || site == 't') {
+            site_values[1]++;
+            site_values[4]++;
+        } else if (site == 'C' || site == 'c') {
+            site_values[2]++;
+            site_values[4]++;
+        } else if (site == 'G' || site == 'g') {
+            site_values[3]++;
+            site_values[4]++;
         } else {
           // Do Nothing
         }
         site_index++;
     }
-}
-    printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", count, chunk_num, count_a, count_t, count_c, count_g);
-    printf("Chunk: %d GC content: %f\n", chunk_num, (((float)count_c + (float)count_g) / (float)count) * 100);
 
-    fclose(file);
-
-}
-
-int word_occurences_count() {
-    // Counts the number of times a word is found in the fasta file
+    return chunk_num;
 }
 
 int find_all_kmer_permutations() {
     // Finds all the permutations for all K-mers of size K
+}
+
+int matching_occurences_count() {
+    // Counts the number of times a word is found in the fasta file
+}
+
+/******************************
+*   Reads through fasta file and runs other functions depending on the input flags passed in.
+*       This function opens the file and reads through each line, It will pass the lines to other functions which do stuff
+*******************************/
+int parse_fasta(struct Flags* flags) {
+    char prev_read[600];
+    char curr_read[600];
+
+    // creates the variables which specific functions need
+    // if (flags[1].flag_raised != 0) {
+        int site_values[6];  // 0 = A; 1 = T; 2 = C, 3 = G, 4 = total
+        int chunk_num = 1;
+        int chunk_val = strtol(flags[1].flag_value, NULL, 10);
+        printf("gc flag value: %d\n", chunk_val);
+
+        int i;
+        for (i = 0; i < 5; i++) {
+            site_values[i] = 0;
+        }
+    //}
+
+    FILE* file = fopen(flags[0].flag_value, "r");
+    while (!feof(file)) {
+        fscanf(file, "%s\n", curr_read);
+        // printf("%s\n", curr_read);
+        skip_info_lines();
+
+        if (flags[1].flag_raised != 0) {  // gc
+            chunk_num = GC_count(flags, curr_read, site_values, chunk_num, chunk_val);
+        }
+        if (flags[2].flag_raised != 0) {  // kmer
+            // find_all_kmer_permutations();
+            printf("kmer flag raised.\n");
+        }
+        if (flags[3].flag_raised != 0) {  // match
+            // matching_occurences_count();
+            printf("Matching flag raised.\n");
+        }
+    }
+
+    if (flags[1].flag_raised != 0) { 
+        printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", site_values[4], chunk_num, site_values[0], site_values[1], site_values[2], site_values[3]);
+        printf("Chunk: %d GC content: %f\n", chunk_num, (((float)site_values[2] + (float)site_values[3]) / (float)site_values[4]) * 100);
+    }
+    fclose(file);
+    return 0;
 }
 
 
@@ -201,52 +225,7 @@ int main(int argc, char** argv) {
     }
     */
 
-    read_through_file();
-
-
-    long int chunk_val = strtol(chunk_size, NULL, 10);
-    char read[600];
-    int count = 0;
-    FILE* file = fopen(fileName, "r");
-    int site_index;
-    int count_a = 0, count_t = 0, count_c = 0, count_g = 0, chunk_num = 1;
-while (!feof(file)) {
-    fscanf(file, "%s\n", read);
-    site_index = 0;
-    while (read[site_index] != '\0') {
-        if(count == chunk_val) {
-           printf("Chunk num: %d A: %d T: %d C: %d G:%d\n", chunk_num, count_a, count_t, count_c, count_g);
-           printf("Chunk: %d GC content: %f\n", chunk_num, (((float)count_c + (float)count_g) / (float)count) * 100);
-           count = 0;
-           count_a = 0;
-           count_t = 0;
-           count_c = 0;
-           count_g = 0;
-           chunk_num++;
-        }
-        char site = read[site_index];
-        if (site == 'A') {
-            count_a++;
-            count++;
-        } else if (site == 'T') {
-            count_t++;
-            count++;
-        } else if (site == 'C') {
-            count_c++;
-            count++;
-        } else if (site == 'G') {
-            count_g++;
-            count++;
-        } else {
-          // Do Nothing
-        }
-        site_index++;
-    }
-}
-    printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", count, chunk_num, count_a, count_t, count_c, count_g);
-    printf("Chunk: %d GC content: %f\n", chunk_num, (((float)count_c + (float)count_g) / (float)count) * 100);
-
-    fclose(file);
+    parse_fasta(flags);
 
     return 0;
 }
