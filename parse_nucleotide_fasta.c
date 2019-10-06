@@ -98,15 +98,6 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
     return argument_legality;
 }
 
-
-
-/******************************
-*   Skips the > lines in a fasta file
-*******************************/
-int skip_info_lines() {
-    return 0;
-}
-
 /******************************
 *   Counts the GC content in the read passed into the function. 
 *******************************/
@@ -162,23 +153,20 @@ int parse_fasta(struct Flags* flags) {
     char curr_read[600];
 
     // creates the variables which specific functions need
-    // if (flags[1].flag_raised != 0) {
-        int site_values[6];  // 0 = A; 1 = T; 2 = C, 3 = G, 4 = total
-        int chunk_num = 1;
-        int chunk_val = strtol(flags[1].flag_value, NULL, 10);
-        printf("gc flag value: %d\n", chunk_val);
-
-        int i;
-        for (i = 0; i < 5; i++) {
-            site_values[i] = 0;
-        }
-    //}
+    int site_values[6];  // 0 = A; 1 = T; 2 = C, 3 = G, 4 = total
+    int chunk_num = 1;
+    int chunk_val = strtol(flags[1].flag_value, NULL, 10);
+    int i;
+    for (i = 0; i < 5; i++) {
+        site_values[i] = 0;
+    }
 
     FILE* file = fopen(flags[0].flag_value, "r");
     while (!feof(file)) {
         fscanf(file, "%s\n", curr_read);
-        // printf("%s\n", curr_read);
-        skip_info_lines();
+        if (curr_read[0] == '>') {
+            fscanf(file, "%s\n", curr_read);
+        }
 
         if (flags[1].flag_raised != 0) {  // gc
             chunk_num = GC_count(flags, curr_read, site_values, chunk_num, chunk_val);
