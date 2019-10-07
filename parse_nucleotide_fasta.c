@@ -2,18 +2,30 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <stdbool.h>
+
+// typedef enum { false, true } bool;
 
 typedef struct Flags {
-    int flag_raised;  // 1 if raised, 0 if not.
+    bool flag_raised;
     char flag_value[100];
 } flag;
+
+void change_lowercase(char* text) {
+    int i;
+    for (i = 0; i < strlen(text); i++){
+        if (text[i] <= 'z' && text[i] >= 'a') {
+            text[i] = text[i] - 32;
+        }
+    }
+}
 
 /******************************
 *   Ensures input is workable.
 *******************************/
 int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) {
     if (argcount == 1) {
-        printf("No arguments entered, please see maunal or enter ./parse_nuc_fasta -help\n");
+        printf("No arguments entered, please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         return -1;
     }
 
@@ -40,13 +52,13 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
         switch (opts) {
             case 'f':
                 argument_legality = 0;
-                flags[0].flag_raised = 1;
+                flags[0].flag_raised = true;
                 strcpy(flags[0].flag_value, optarg);
                 printf("File %s passed in.\n", optarg);
                 break;
             case 'c':
                 argument_legality = 0;
-                flags[1].flag_raised = 1;
+                flags[1].flag_raised = true;
                 if (optarg == NULL) {
                     printf("Calculating global GC content.\n");
                 } else {
@@ -56,18 +68,19 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 break;
             case 'k':
                 argument_legality = 0;
-                flags[2].flag_raised = 1;
+                flags[2].flag_raised = true;
                 strcpy(flags[2].flag_value, optarg);
                 printf("Determining all k-mers of size %s.\n", optarg);
                 break;
             case 'm':
                 argument_legality = 0;
-                flags[3].flag_raised = 1;
+                flags[3].flag_raised = true;
                 strcpy(flags[3].flag_value, optarg);
+                change_lowercase(flags[3].flag_value);
                 printf("Searching for all instances of %s in file.\n", optarg);
                 break;
             case 'h':
-                printf("Parse_nuc_fasta Options: \n");
+                printf("Parse Nucleotide Fasta Options: \n");
                 printf("\t-help : displays this message.\n");
                 printf("\t-file <file> : Directs the program to the fasta file.\n");
                 printf("\t-gc : global gc count.\n");
@@ -77,26 +90,27 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 argument_legality = -1;
                 break;
             case '?':
-                printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nuc_fasta -help\n");
+                printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
                 argument_legality = -1;
                 break;
             default:
-                printf("No legal options entered. Please see maunal or enter ./parse_nuc_fasta -help\n");
+                printf("No legal options entered. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
                 argument_legality = -1;
                 break;
         }
     }
-    if (flags[0].flag_raised == 0) {
-        printf("A fasta file must be passed in. Please see maunal or enter ./parse_nuc_fasta -help\n");
+    if (flags[0].flag_raised == false) {
+        printf("A fasta file must be passed in. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
-    } else if (flags[1].flag_raised == 0 &&
-               flags[2].flag_raised == 0 &&
-               flags[3].flag_raised == 0) {
-        printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nuc_fasta -help\n");
+    } else if (flags[1].flag_raised == false &&
+               flags[2].flag_raised == false &&
+               flags[3].flag_raised == false) {
+        printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
     }
     return argument_legality;
 }
+
 
 /******************************
 *   Counts the GC content in the read passed into the function. 
@@ -115,16 +129,16 @@ int GC_count(struct Flags* flags, char* read, int* site_values, int chunk_num, i
             chunk_num++;
         }
         char site = read[site_index];
-        if (site == 'A' || site == 'a') {
+        if (site == 'A') {
             site_values[0]++;
             site_values[4]++;
-        } else if (site == 'T' || site == 't') {
+        } else if (site == 'T') {
             site_values[1]++;
             site_values[4]++;
-        } else if (site == 'C' || site == 'c') {
+        } else if (site == 'C') {
             site_values[2]++;
             site_values[4]++;
-        } else if (site == 'G' || site == 'g') {
+        } else if (site == 'G') {
             site_values[3]++;
             site_values[4]++;
         } else {
@@ -190,7 +204,7 @@ int matching_occurences_count(struct Flags* flags, char* curr_read, char* prev_r
 *   Reads through fasta file and runs other functions depending on the input flags passed in.
 *       This function opens the file and reads through each line, It will pass the lines to other functions which do stuff
 *******************************/
-int parse_fasta(struct Flags* flags) {
+void parse_fasta(struct Flags* flags) {
     char curr_read[600];
 
     // creates the variables used in GC_count
@@ -210,34 +224,35 @@ int parse_fasta(struct Flags* flags) {
     while (!feof(file)) {
         fscanf(file, "%s\n", curr_read);
         if (curr_read[0] == '>') {
+            strcpy(prev_read, "");
             fscanf(file, "%s\n", curr_read);
         }
 
-        if (flags[1].flag_raised != 0) {  // gc
+        change_lowercase(curr_read);
+        if (flags[1].flag_raised != false) {  // gc
             chunk_num = GC_count(flags, curr_read, site_values, chunk_num, chunk_val);
         }
-        if (flags[2].flag_raised != 0) {  // kmer
+        if (flags[2].flag_raised != false) {  // kmer
             // find_all_kmer_permutations(); 
             // not implemented yet
         }
-        if (flags[3].flag_raised != 0) {  // match
+        if (flags[3].flag_raised != false) {  // match
             occurence_count += matching_occurences_count(flags, curr_read, prev_read);
             strcpy(prev_read, curr_read);
         }
     }
 
-    if (flags[1].flag_raised != 0) {
+    if (flags[1].flag_raised != false) {
         printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", site_values[4], chunk_num, site_values[0], site_values[1], site_values[2], site_values[3]);
         printf("Chunk: %d GC content: %f\n", chunk_num, (((float)site_values[2] + (float)site_values[3]) / (float)site_values[4]) * 100);
     }
-    if (flags[2].flag_raised != 0) {
+    if (flags[2].flag_raised != false) {
         printf("kmer flag raised. This feature is not implement yet.\n");
     }
-    if (flags[3].flag_raised != 0) {
+    if (flags[3].flag_raised != false) {
         printf("Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
     }
     fclose(file);
-    return 0;
 }
 
 
@@ -248,7 +263,7 @@ int main(int argc, char** argv) {
 
     int i;
     for (i = 0; i < number_of_flags; i++) {
-        flags[i].flag_raised = 0;  // flag 0: file, flag 1: gc, flag 2: kmer, flag 3: match.
+        flags[i].flag_raised = false;  // flag 0: file, flag 1: gc, flag 2: kmer, flag 3: match.
         strcpy(flags[i].flag_value, "");
     }
 
