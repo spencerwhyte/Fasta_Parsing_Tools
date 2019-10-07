@@ -68,12 +68,12 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 break;
             case 'h':
                 printf("Parse_nuc_fasta Options: \n");
-                printf("\t-help : displays this message\n");
+                printf("\t-help : displays this message.\n");
                 printf("\t-file <file> : Directs the program to the fasta file.\n");
-                printf("\t-gc : global gc count\n");
-                printf("\t-gc=<x> : gc count per x bases\n");
-                printf("\t-k_mers <k> : lists all k-mers of size k\n");
-                printf("\t-match <string> : searches for all instances of a string\n");
+                printf("\t-gc : global gc count.\n");
+                printf("\t-gc=<x> : gc count per x bases.\n");
+                printf("\t-k_mers <k> : lists all k-mers of size k.\n");
+                printf("\t-match <string> : searches for all instances of a string. (only words for same case searches)\n");
                 argument_legality = -1;
                 break;
             case '?':
@@ -140,8 +140,50 @@ int find_all_kmer_permutations() {
     // Finds all the permutations for all K-mers of size K
 }
 
-int matching_occurences_count() {
-    // Counts the number of times a word is found in the fasta file
+/******************************
+*   Searches recursivly the bases in two reads (the current read that the program is on and the prevous read).
+*   It will output 1 if the search gets to the first index in the word without matching errors (meaning the
+*       read and the word match) and 0 otherwise.
+*******************************/
+int recursive_char_search(struct Flags* flags, int word_index, char* curr_read, char* prev_read, int index) {
+    if (word_index < 0) {
+        return 1;
+    }
+    if (index < 0) {
+        int prev_read_size = strlen(prev_read);
+        if (prev_read[prev_read_size + index] == flags[3].flag_value[word_index]) {
+            return recursive_char_search(flags, word_index - 1, curr_read, prev_read, index - 1);
+        } else {
+            return 0;
+        }
+    } else {
+        if (curr_read[index] == flags[3].flag_value[word_index]) {
+            return recursive_char_search(flags, word_index - 1, curr_read, prev_read, index - 1);
+        } else {
+            return 0;
+        }
+    }
+}
+
+/******************************
+*   Counts the number of times a word is found in the fasta file
+*******************************/
+int matching_occurences_count(struct Flags* flags, char* curr_read, char* prev_read) {
+    int occurence_count = 0;
+    int curr_read_size = strlen(curr_read);
+    int word_size = strlen(flags[3].flag_value);
+    int i;
+    if (strcmp(prev_read, "")) {
+        for (i = 0; i < curr_read_size; i++) {
+            occurence_count += recursive_char_search(flags, word_size - 1, curr_read, prev_read, i);
+        }
+    } else {
+        for (i = word_size - 1; i < curr_read_size; i++) {
+            occurence_count += recursive_char_search(flags, word_size - 1, curr_read, prev_read, i);
+        }
+    }
+
+    return occurence_count;
 }
 
 /******************************
@@ -149,17 +191,20 @@ int matching_occurences_count() {
 *       This function opens the file and reads through each line, It will pass the lines to other functions which do stuff
 *******************************/
 int parse_fasta(struct Flags* flags) {
-    char prev_read[600];
     char curr_read[600];
 
-    // creates the variables which specific functions need
-    int site_values[6];  // 0 = A; 1 = T; 2 = C, 3 = G, 4 = total
+    // creates the variables used in GC_count
+    int site_values[5];  // 0 = A; 1 = T; 2 = C, 3 = G, 4 = total
     int chunk_num = 1;
     int chunk_val = strtol(flags[1].flag_value, NULL, 10);
     int i;
     for (i = 0; i < 5; i++) {
         site_values[i] = 0;
     }
+
+    // creates the variables used in matching_occurences_count 
+    char prev_read[600] = "";
+    int occurence_count = 0;
 
     FILE* file = fopen(flags[0].flag_value, "r");
     while (!feof(file)) {
@@ -173,17 +218,20 @@ int parse_fasta(struct Flags* flags) {
         }
         if (flags[2].flag_raised != 0) {  // kmer
             // find_all_kmer_permutations();
-            printf("kmer flag raised.\n");
+            printf("kmer flag raised. This feature is not implement yet.\n");
         }
         if (flags[3].flag_raised != 0) {  // match
-            // matching_occurences_count();
-            printf("Matching flag raised.\n");
+            occurence_count += matching_occurences_count(flags, curr_read, prev_read);
+            strcpy(prev_read, curr_read);
         }
     }
 
-    if (flags[1].flag_raised != 0) { 
+    if (flags[1].flag_raised != 0) {
         printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", site_values[4], chunk_num, site_values[0], site_values[1], site_values[2], site_values[3]);
         printf("Chunk: %d GC content: %f\n", chunk_num, (((float)site_values[2] + (float)site_values[3]) / (float)site_values[4]) * 100);
+    }
+    if (flags[3].flag_raised != 0) {
+        printf("Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
     }
     fclose(file);
     return 0;
@@ -205,13 +253,6 @@ int main(int argc, char** argv) {
     if (error_flag == -1) {
         return 0;
     }
-
-    /* Check flags and flag values
-    for (i = 0; i < number_of_flags; i++) {
-        printf("is flag %d raised: %d\n", i, flags[i].flag_raised);  // flag 0: file, flag 1: gc , flag 2: kmer, flag 3: match
-        printf("flag %i value: %s\n", i, flags[i].flag_value);
-    }
-    */
 
     parse_fasta(flags);
 
