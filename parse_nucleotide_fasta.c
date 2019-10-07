@@ -217,8 +217,8 @@ int parse_fasta(struct Flags* flags) {
             chunk_num = GC_count(flags, curr_read, site_values, chunk_num, chunk_val);
         }
         if (flags[2].flag_raised != 0) {  // kmer
-            // find_all_kmer_permutations();
-            printf("kmer flag raised. This feature is not implement yet.\n");
+            // find_all_kmer_permutations(); 
+            // not implemented yet
         }
         if (flags[3].flag_raised != 0) {  // match
             occurence_count += matching_occurences_count(flags, curr_read, prev_read);
@@ -229,6 +229,9 @@ int parse_fasta(struct Flags* flags) {
     if (flags[1].flag_raised != 0) {
         printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", site_values[4], chunk_num, site_values[0], site_values[1], site_values[2], site_values[3]);
         printf("Chunk: %d GC content: %f\n", chunk_num, (((float)site_values[2] + (float)site_values[3]) / (float)site_values[4]) * 100);
+    }
+    if (flags[2].flag_raised != 0) {
+        printf("kmer flag raised. This feature is not implement yet.\n");
     }
     if (flags[3].flag_raised != 0) {
         printf("Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
