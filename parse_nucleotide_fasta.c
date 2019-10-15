@@ -11,9 +11,12 @@ typedef struct Flags {
     char flag_value[100];
 } flag;
 
+/******************************
+*   Changes input into uppercase. 
+*******************************/
 void change_lowercase(char* text) {
     int i;
-    for (i = 0; i < strlen(text); i++){
+    for (i = 0; i < strlen(text); i++) {
         if (text[i] <= 'z' && text[i] >= 'a') {
             text[i] = text[i] - 32;
         }
@@ -21,7 +24,13 @@ void change_lowercase(char* text) {
 }
 
 /******************************
-*   Ensures input is workable.
+*   Parses the input of the -seq option. 
+*******************************/
+void seq_parse (char* text) {
+    // parses the text passed in after -seq and finds the parameters
+}
+/******************************
+*   Ensures input is workable and parses the input for the settings the program should use.
 *******************************/
 int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) {
     if (argcount == 1) {
@@ -34,6 +43,8 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
         {"gc", optional_argument, NULL, 'c'},
         {"k_mers", required_argument, NULL, 'k'},
         {"match", required_argument, NULL, 'm'},
+        {"seq", required_argument, NULL, 's'},
+        {"out", required_argument, NULL, 'o'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
         /*
@@ -48,7 +59,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
 
     int opts;
     int argument_legality = -1;
-    while ((opts = getopt_long_only(argcount, argvalues, "f:c::k:m:h", long_options, NULL)) != -1) {
+    while ((opts = getopt_long_only(argcount, argvalues, "f:c::k:m:hs:o:", long_options, NULL)) != -1) {
         switch (opts) {
             case 'f':
                 argument_legality = 0;
@@ -77,17 +88,34 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 flags[3].flag_raised = true;
                 strcpy(flags[3].flag_value, optarg);
                 change_lowercase(flags[3].flag_value);
-                printf("Searching for all instances of %s in file.\n", optarg);
+                printf("Searching for all instances of %s in file.\n", flags[3].flag_value);
                 break;
             case 'h':
                 printf("Parse Nucleotide Fasta Options: \n");
                 printf("\t-help : displays this message.\n");
-                printf("\t-file <file> : Directs the program to the fasta file.\n");
+                printf("\t-file <file> : directs the program to the fasta file.\n");
                 printf("\t-gc : global gc count.\n");
-                printf("\t-gc=<x> : gc count per x bases.\n");
+                printf("\t\t-gc=<x> : gc count per x bases.\n");
                 printf("\t-k_mers <k> : lists all k-mers of size k.\n");
                 printf("\t-match <string> : searches for all instances of a string. (only words for same case searches)\n");
+                printf("\t-seq <options> : options must be separated by , \n");
+                printf("\t\t-seq <seq_numbers> : preformes any operations on only the sequence numbers given.\n");
+                printf("\t\t-seq merge : merges all sequences into one.\n");
+                printf("\t\t-seq <name> : performes operations on the named sequences.\n");
+                printf("\t-out <filename> : outputs data to file.\n");
                 argument_legality = -1;
+                break;
+            case 's':
+                argument_legality = 0;
+                flags[4].flag_raised = true;
+                strcpy(flags[4].flag_value, optarg);
+                // parse through output, check if legal and set parameters which will be used
+                break;
+            case 'o':
+                argument_legality = 0;
+                flags[5].flag_raised = true;
+                strcpy(flags[5].flag_value, optarg);
+                printf("Printing output into file %s.\n", flags[5].flag_value);
                 break;
             case '?':
                 printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
@@ -104,7 +132,9 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
         argument_legality = -1;
     } else if (flags[1].flag_raised == false &&
                flags[2].flag_raised == false &&
-               flags[3].flag_raised == false) {
+               flags[3].flag_raised == false &&
+               flags[4].flag_raised == false &&
+               flags[5].flag_raised == false) {
         printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
     }
@@ -241,7 +271,7 @@ void parse_fasta(struct Flags* flags) {
             strcpy(prev_read, curr_read);
         }
     }
-
+// shoud be its out "output" function
     if (flags[1].flag_raised != false) {
         printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", site_values[4], chunk_num, site_values[0], site_values[1], site_values[2], site_values[3]);
         printf("Chunk: %d GC content: %f\n", chunk_num, (((float)site_values[2] + (float)site_values[3]) / (float)site_values[4]) * 100);
@@ -257,13 +287,13 @@ void parse_fasta(struct Flags* flags) {
 
 
 int main(int argc, char** argv) {
-    int number_of_flags = 4;
+    int number_of_flags = 6;
     struct Flags flags[number_of_flags];
     int error_flag = 0;
 
     int i;
     for (i = 0; i < number_of_flags; i++) {
-        flags[i].flag_raised = false;  // flag 0: file, flag 1: gc, flag 2: kmer, flag 3: match.
+        flags[i].flag_raised = false;  // flag 0: file, flag 1: gc, flag 2: kmer, flag 3: match, flag 4: seq, flag 5: out file.
         strcpy(flags[i].flag_value, "");
     }
 
