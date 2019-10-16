@@ -22,13 +22,13 @@ typedef struct Reads {
     char curr_read[600];
 } Reads;
 
-/*
 typedef struct Files {
-    File* fasta_file;
-    File* merge_file;
-    File* out_file;
+    FILE* fasta_file;
+    FILE* merge_file;
+    FILE* out_file;
 } Files;
-*/
+
+
 /******************************
 *   Changes input into uppercase. 
 *******************************/
@@ -59,7 +59,6 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
     static struct option long_options[] = {
         {"file", required_argument, NULL, 'f'},
         {"gc", optional_argument, NULL, 'c'},
-        {"k_mers", required_argument, NULL, 'k'},
         {"match", required_argument, NULL, 'm'},
         {"merge", required_argument, NULL, 'g'},
         {"seq", required_argument, NULL, 's'},
@@ -70,7 +69,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
 
     int opts;
     int argument_legality = -1;
-    while ((opts = getopt_long_only(argcount, argvalues, "f:c::k:m:g:hs:o:", long_options, NULL)) != -1) {
+    while ((opts = getopt_long_only(argcount, argvalues, "f:c::m:g:hs:o:", long_options, NULL)) != -1) {
         switch (opts) {
             case 'f':
                 argument_legality = 0;
@@ -88,11 +87,11 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                     printf("Calculating GC content per %s nucleotides\n", optarg);
                 }
                 break;
-            case 'k':
+            case 'o':
                 argument_legality = 0;
                 flags[2].flag_raised = true;
                 strcpy(flags[2].flag_value, optarg);
-                printf("Determining all k-mers of size %s.\n", optarg);
+                printf("Printing output into file %s.\n", flags[2].flag_value);
                 break;
             case 'm':
                 argument_legality = 0;
@@ -107,7 +106,6 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 printf("\t-file <file> : directs the program to the fasta file.\n");
                 printf("\t-gc : global gc count.\n");
                 printf("\t\t-gc=<x> : gc count per x bases.\n");
-                printf("\t-k_mers <k> : lists all k-mers of size k.\n");
                 printf("\t-match <string> : searches for all instances of a string. (only words for same case searches)\n");
                 printf("\t-merge <merged file name> : merges sequences into one and outputs result into file.\n");
                 printf("\t-seq <options> : options must be separated by , or -\n");
@@ -129,12 +127,6 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 printf("Carrying out operations only on selected sequences.\n");
                 // parse through output, check if legal and set parameters which will be used
                 break;
-            case 'o':
-                argument_legality = 0;
-                flags[6].flag_raised = true;
-                strcpy(flags[6].flag_value, optarg);
-                printf("Printing output into file %s.\n", flags[6].flag_value);
-                break;
             case '?':
                 printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
                 argument_legality = -1;
@@ -152,8 +144,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                flags[2].flag_raised == false &&
                flags[3].flag_raised == false &&
                flags[4].flag_raised == false &&
-               flags[5].flag_raised == false &&
-               flags[6].flag_raised == false) {
+               flags[5].flag_raised == false) {
         printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
     }
@@ -163,21 +154,18 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
 /******************************
 *   Prints output to either command line or to the file passed in from -out <file>.
 *******************************/
-void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_count, FILE* out_file, bool called_from_gc_func) {
-    if (flags[6].flag_raised != false) {
+void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_count, struct Files* files, bool called_from_gc_func) {
+    if (flags[2].flag_raised != false) {
         if (called_from_gc_func != false) {
-            fprintf(out_file, "Chunk number: %d A: %d T: %d C: %d G:%d\n", gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
-            fprintf(out_file, "Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
+            fprintf(files->out_file, "Chunk number: %d A: %d T: %d C: %d G:%d\n", gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
+            fprintf(files->out_file, "Chunk: %d GC content: %f\n\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
         } else {
             if (flags[1].flag_raised != false) {
-                fprintf(out_file, "Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
-                fprintf(out_file, "Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
-            }
-            if (flags[2].flag_raised != false) {
-                fprintf(out_file, "kmer flag raised. This feature is not implement yet.\n");
+                fprintf(files->out_file, "Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
+                fprintf(files->out_file, "Chunk: %d GC content: %f\n\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
             }
             if (flags[3].flag_raised != false) { // need different file output here
-                fprintf(out_file, "Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
+                fprintf(files->out_file, "Total number of occurences of %s in the file was %d\n\n", flags[3].flag_value, occurence_count);
             }
         }
     } else {
@@ -187,13 +175,10 @@ void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_co
         } else {
             if (flags[1].flag_raised != false) {
                 printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
-                printf("Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
-            }
-            if (flags[2].flag_raised != false) {
-                printf("kmer flag raised. This feature is not implement yet.\n");
+                printf("Chunk: %d GC content: %f\n\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
             }
             if (flags[3].flag_raised != false) { // need different file output here
-                printf("Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
+                printf("Total number of occurences of %s was %d\n\n", flags[3].flag_value, occurence_count);
             }
         }
     }
@@ -202,12 +187,12 @@ void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_co
 /******************************
 *   Counts the GC content in the read passed into the function. 
 *******************************/
-void GC_count(struct Flags* flags, char* read, struct GC_data* gc_data, FILE* out_file) {
+void GC_count(struct Flags* flags, char* read, struct GC_data* gc_data, struct Files* files) {
     // counts GC content per X bases
     int site_index = 0;
     while (read[site_index] != '\0') {
         if(gc_data->site_values[4] == gc_data->chunk_size && gc_data->chunk_size != 0) {
-            print_output(flags, gc_data, 0, out_file, true);
+            print_output(flags, gc_data, 0, files, true);
             int i;
             for (i = 0; i < 5; i++) {
                 gc_data->site_values[i] = 0;
@@ -284,20 +269,20 @@ void matching_occurences_count(struct Flags* flags, char* curr_read, char* prev_
 /******************************
 *   Iterates over the lines of the opened fasta file.
 *******************************/
-void iterate_over_lines(FILE* fasta_file, struct Flags* flags, FILE* out_file, FILE* merge_file, struct Reads* reads, struct GC_data* gc_data, int* occurence_count) {
-    while (!feof(fasta_file)) {
-        fscanf(fasta_file, "%s\n", reads->curr_read);
+void iterate_over_lines(struct Files* files, struct Flags* flags, struct Reads* reads, struct GC_data* gc_data, int* occurence_count) {
+    while (!feof(files->fasta_file)) {
+        fscanf(files->fasta_file, "%s\n", reads->curr_read);
         // seq stuff here
         if (reads->curr_read[0] == '>') {
             strcpy(reads->prev_read, "");
-            fscanf(fasta_file, "%s\n", reads->curr_read);
+            fscanf(files->fasta_file, "%s\n", reads->curr_read);
         }
-        if (merge_file != NULL) {
-            fprintf(merge_file, "%s\n", reads->curr_read);
+        if (files->merge_file != NULL) {
+            fprintf(files->merge_file, "%s\n", reads->curr_read);
         }
         change_lowercase(reads->curr_read);
         if (flags[1].flag_raised != false) {  // gc
-            GC_count(flags, reads->curr_read, gc_data, out_file);
+            GC_count(flags, reads->curr_read, gc_data, files);
         }
         if (flags[2].flag_raised != false) {  // kmer
             // find_all_kmer_permutations(); 
@@ -329,47 +314,47 @@ void parse_fasta(struct Flags* flags) {
     }
 
     int occurence_count = 0;
-
-    FILE* fasta_file = fopen(flags[0].flag_value, "r");
+    struct Files files;
+    files.fasta_file = fopen(flags[0].flag_value, "r");
             
 
-    if (flags[6].flag_raised != false) {
-        FILE* out_file = fopen(flags[6].flag_value, "w");
+    if (flags[2].flag_raised != false) {
+        files.out_file = fopen(flags[2].flag_value, "w");
         if (flags[4].flag_raised != false) {
-            FILE* merge_file = fopen(flags[4].flag_value, "w");
-            fprintf(merge_file, ">Sequences_Merged\n");
-            iterate_over_lines(fasta_file, flags, out_file, merge_file, &reads, &gc_data, &occurence_count);
-            print_output(flags, &gc_data, occurence_count, out_file, false);
-            fclose(merge_file);
+            files.merge_file = fopen(flags[4].flag_value, "w");
+            fprintf(files.merge_file, ">Sequences_Merged\n");
+            iterate_over_lines(&files, flags, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, &files, false);
+            fclose(files.merge_file);
         } else {
-            iterate_over_lines(fasta_file, flags, out_file, NULL, &reads, &gc_data, &occurence_count);
-            print_output(flags, &gc_data, occurence_count, out_file, false);
+            iterate_over_lines(&files, flags, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, &files, false);
         }
-        fclose(out_file);
+        fclose(files.out_file);
     } else {
         if (flags[4].flag_raised != false) {
-            FILE* merge_file = fopen(flags[4].flag_value, "w");
-            fprintf(merge_file, ">Sequences_Merged\n");
-            iterate_over_lines(fasta_file, flags, NULL, merge_file, &reads, &gc_data, &occurence_count);
-            print_output(flags, &gc_data, occurence_count, NULL, false);
-            fclose(merge_file);
+            files.merge_file = fopen(flags[4].flag_value, "w");
+            fprintf(files.merge_file, ">Sequences_Merged\n");
+            iterate_over_lines(&files, flags, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, &files, false);
+            fclose(files.merge_file);
         } else {
-            iterate_over_lines(fasta_file, flags, NULL, NULL, &reads, &gc_data, &occurence_count);
-            print_output(flags, &gc_data, occurence_count, NULL, false);
+            iterate_over_lines(&files, flags, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, &files, false);
         }
     }
-    fclose(fasta_file);
+    fclose(files.fasta_file);
 }
 
 
 int main(int argc, char** argv) {
-    int number_of_flags = 7;
+    int number_of_flags = 6;
     struct Flags flags[number_of_flags];
     int error_flag = 0;
 
     int i;
     for (i = 0; i < number_of_flags; i++) {
-        flags[i].flag_raised = false;  // flag 0: file, flag 1: gc, flag 2: kmer, flag 3: match, flag 4: merge, flag 5: seq, flag 6: out file.
+        flags[i].flag_raised = false;  // flag 0: file, flag 1: gc, flag 2: out file, flag 3: match, flag 4: merge, flag 5: seq.
         strcpy(flags[i].flag_value, "");
     }
 
