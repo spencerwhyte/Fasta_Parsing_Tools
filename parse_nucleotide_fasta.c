@@ -120,13 +120,13 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 argument_legality = 0;
                 flags[4].flag_raised = true;
                 strcpy(flags[4].flag_value, optarg);
-                printf("Merging sequences into file: %s.", flags[4].flag_value);
+                printf("Merging sequences into file: %s.\n", flags[4].flag_value);
                 break;
             case 's':
                 argument_legality = 0;
                 flags[5].flag_raised = true;
                 strcpy(flags[5].flag_value, optarg);
-                printf("Carrying out operations only on selected sequences.");
+                printf("Carrying out operations only on selected sequences.\n");
                 // parse through output, check if legal and set parameters which will be used
                 break;
             case 'o':
@@ -163,42 +163,38 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
 /******************************
 *   Prints output to either command line or to the file passed in from -out <file>.
 *******************************/
-void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_count, FILE* out_file) {
+void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_count, FILE* out_file, bool called_from_gc_func) {
     if (flags[6].flag_raised != false) {
-        if (flags[1].flag_raised != false &&
-            gc_data->site_values[4] == gc_data->chunk_size &&
-            gc_data->chunk_size != 0) {
+        if (called_from_gc_func != false) {
             fprintf(out_file, "Chunk number: %d A: %d T: %d C: %d G:%d\n", gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
             fprintf(out_file, "Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
-        }
-        printf("-------------------------\n");
-        if (flags[1].flag_raised != false) {
-            fprintf(out_file, "Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
-            fprintf(out_file, "Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
-        }
-        if (flags[2].flag_raised != false) {
-            fprintf(out_file, "kmer flag raised. This feature is not implement yet.\n");
-        }
-        if (flags[3].flag_raised != false) { // need different file output here
-            fprintf(out_file, "Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
+        } else {
+            if (flags[1].flag_raised != false) {
+                fprintf(out_file, "Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
+                fprintf(out_file, "Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
+            }
+            if (flags[2].flag_raised != false) {
+                fprintf(out_file, "kmer flag raised. This feature is not implement yet.\n");
+            }
+            if (flags[3].flag_raised != false) { // need different file output here
+                fprintf(out_file, "Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
+            }
         }
     } else {
-        if (flags[1].flag_raised != false &&
-            gc_data->site_values[4] == gc_data->chunk_size &&
-            gc_data->chunk_size != 0) {
+        if (called_from_gc_func != false) {
             printf("Chunk number: %d A: %d T: %d C: %d G:%d\n", gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
-            printf("Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
-        }
-        printf("-------------------------\n");
-        if (flags[1].flag_raised != false) {
-            printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
-            printf("Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
-        }
-        if (flags[2].flag_raised != false) {
-            printf("kmer flag raised. This feature is not implement yet.\n");
-        }
-        if (flags[3].flag_raised != false) { // need different file output here
-            printf("Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
+            printf("Chunk: %d GC content: %f\n\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
+        } else {
+            if (flags[1].flag_raised != false) {
+                printf("Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
+                printf("Chunk: %d GC content: %f\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
+            }
+            if (flags[2].flag_raised != false) {
+                printf("kmer flag raised. This feature is not implement yet.\n");
+            }
+            if (flags[3].flag_raised != false) { // need different file output here
+                printf("Total number of occurences of %s in the file was %d\n", flags[3].flag_value, occurence_count);
+            }
         }
     }
 }
@@ -210,8 +206,8 @@ void GC_count(struct Flags* flags, char* read, struct GC_data* gc_data, FILE* ou
     // counts GC content per X bases
     int site_index = 0;
     while (read[site_index] != '\0') {
-        if(gc_data->site_values[4] == gc_data->chunk_size && gc_data->chunk_size != 0) { // need different file output here
-            print_output(flags, gc_data, 0, out_file);
+        if(gc_data->site_values[4] == gc_data->chunk_size && gc_data->chunk_size != 0) {
+            print_output(flags, gc_data, 0, out_file, true);
             int i;
             for (i = 0; i < 5; i++) {
                 gc_data->site_values[i] = 0;
@@ -270,28 +266,25 @@ int recursive_char_search(struct Flags* flags, int word_index, char* curr_read, 
 /******************************
 *   Counts the number of times a word is found in the fasta file
 *******************************/
-int matching_occurences_count(struct Flags* flags, char* curr_read, char* prev_read) {
-    int occurence_count = 0;
+void matching_occurences_count(struct Flags* flags, char* curr_read, char* prev_read, int* occurence_count) {
     int curr_read_size = strlen(curr_read);
     int word_size = strlen(flags[3].flag_value);
     int i;
     if (strcmp(prev_read, "")) {
         for (i = 0; i < curr_read_size; i++) {
-            occurence_count += recursive_char_search(flags, word_size - 1, curr_read, prev_read, i);
+            *occurence_count += recursive_char_search(flags, word_size - 1, curr_read, prev_read, i);
         }
     } else {
         for (i = word_size - 1; i < curr_read_size; i++) {
-            occurence_count += recursive_char_search(flags, word_size - 1, curr_read, prev_read, i);
+            *occurence_count += recursive_char_search(flags, word_size - 1, curr_read, prev_read, i);
         }
     }
-
-    return occurence_count;
 }
 
 /******************************
 *   Iterates over the lines of the opened fasta file.
 *******************************/
-void iterate_over_lines(FILE* fasta_file, struct Flags* flags, FILE* out_file, FILE* merge_file, struct Reads* reads, struct GC_data* gc_data, int occurence_count) {
+void iterate_over_lines(FILE* fasta_file, struct Flags* flags, FILE* out_file, FILE* merge_file, struct Reads* reads, struct GC_data* gc_data, int* occurence_count) {
     while (!feof(fasta_file)) {
         fscanf(fasta_file, "%s\n", reads->curr_read);
         // seq stuff here
@@ -299,7 +292,9 @@ void iterate_over_lines(FILE* fasta_file, struct Flags* flags, FILE* out_file, F
             strcpy(reads->prev_read, "");
             fscanf(fasta_file, "%s\n", reads->curr_read);
         }
-
+        if (merge_file != NULL) {
+            fprintf(merge_file, "%s\n", reads->curr_read);
+        }
         change_lowercase(reads->curr_read);
         if (flags[1].flag_raised != false) {  // gc
             GC_count(flags, reads->curr_read, gc_data, out_file);
@@ -309,7 +304,7 @@ void iterate_over_lines(FILE* fasta_file, struct Flags* flags, FILE* out_file, F
             // not implemented yet
         }
         if (flags[3].flag_raised != false) {  // match
-            occurence_count += matching_occurences_count(flags, reads->curr_read, reads->prev_read);
+            matching_occurences_count(flags, reads->curr_read, reads->prev_read, occurence_count);
             strcpy(reads->prev_read, reads->curr_read);
         }
     }
@@ -341,27 +336,26 @@ void parse_fasta(struct Flags* flags) {
     if (flags[6].flag_raised != false) {
         FILE* out_file = fopen(flags[6].flag_value, "w");
         if (flags[4].flag_raised != false) {
-            printf("t t\n");
             FILE* merge_file = fopen(flags[4].flag_value, "w");
-            iterate_over_lines(fasta_file, flags, out_file, merge_file, &reads, &gc_data, occurence_count);
-            print_output(flags, &gc_data, occurence_count, out_file);
+            fprintf(merge_file, ">Sequences_Merged\n");
+            iterate_over_lines(fasta_file, flags, out_file, merge_file, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, out_file, false);
             fclose(merge_file);
         } else {
-            printf("T F\n");
-            iterate_over_lines(fasta_file, flags, out_file, NULL, &reads, &gc_data, occurence_count);
-            print_output(flags, &gc_data, occurence_count, out_file);
+            iterate_over_lines(fasta_file, flags, out_file, NULL, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, out_file, false);
         }
         fclose(out_file);
     } else {
         if (flags[4].flag_raised != false) {
-            printf("F T\n");
             FILE* merge_file = fopen(flags[4].flag_value, "w");
-            iterate_over_lines(fasta_file, flags, NULL, merge_file, &reads, &gc_data, occurence_count);
-            print_output(flags, &gc_data, occurence_count, NULL);
+            fprintf(merge_file, ">Sequences_Merged\n");
+            iterate_over_lines(fasta_file, flags, NULL, merge_file, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, NULL, false);
             fclose(merge_file);
         } else {
-            iterate_over_lines(fasta_file, flags, NULL, NULL, &reads, &gc_data, occurence_count);
-            print_output(flags, &gc_data, occurence_count, NULL);
+            iterate_over_lines(fasta_file, flags, NULL, NULL, &reads, &gc_data, &occurence_count);
+            print_output(flags, &gc_data, occurence_count, NULL, false);
         }
     }
     fclose(fasta_file);

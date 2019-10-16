@@ -1,0 +1,3 @@
+Total size of final chunk: 20. Chunk num: 1 A: 5 T: 5 C: 5 G:5
+Chunk: 1 GC content: 50.000000
+Total number of occurences of ATCG in the file was 4
