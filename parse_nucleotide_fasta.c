@@ -6,7 +6,7 @@
 
 // typedef enum { false, true } bool;
 
-typedef struct Flags {
+typedef struct Flags {  // flag 0: file, flag 1: gc, flag 2: out file, flag 3: match, flag 4: merge, flag 5: seq.
     bool flag_raised;
     char flag_value[100];
 } Flags;
@@ -42,10 +42,25 @@ void change_lowercase(char* text) {
 }
 
 /******************************
-*   Parses the input of the -seq option. 
+*   Parses the input of the -seq option and splits the input by ,. 
+*       If the sequence text passed in contains the same 
 *******************************/
-void seq_parse (char* text) {
-    // parses the text passed in after -seq and finds the parameters
+bool does_header_match(char* seq_search_string, char* curr_read, bool* prev_header) {
+    if (curr_read[0] != '>') {
+        return false;
+    } else {
+        char search_cpy[600];
+        strcpy(search_cpy, seq_search_string);
+        char* rest = search_cpy;
+        char* token;
+        while ((token = strtok_r(rest, ",", &rest))) {
+            char cmp_string[600] = ">";
+            if (!strcmp(curr_read, strcat(cmp_string, token))) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 /******************************
 *   Ensures input is workable and parses the input for the settings the program should use.
@@ -124,8 +139,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 argument_legality = 0;
                 flags[5].flag_raised = true;
                 strcpy(flags[5].flag_value, optarg);
-                printf("Carrying out operations only on selected sequences.\n");
-                // parse through output, check if legal and set parameters which will be used
+                printf("Carrying out operations only on selected sequences using sequence identifier string: %s.\n", flags[5].flag_value);
                 break;
             case '?':
                 printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
@@ -188,7 +202,6 @@ void print_output(struct Flags* flags, struct GC_data* gc_data, int occurence_co
 *   Counts the GC content in the read passed into the function. 
 *******************************/
 void GC_count(struct Flags* flags, char* read, struct GC_data* gc_data, struct Files* files) {
-    // counts GC content per X bases
     int site_index = 0;
     while (read[site_index] != '\0') {
         if(gc_data->site_values[4] == gc_data->chunk_size && gc_data->chunk_size != 0) {
@@ -217,10 +230,6 @@ void GC_count(struct Flags* flags, char* read, struct GC_data* gc_data, struct F
         }
         site_index++;
     }
-}
-
-int find_all_kmer_permutations() {
-    // Finds all the permutations for all K-mers of size K
 }
 
 /******************************
@@ -272,25 +281,25 @@ void matching_occurences_count(struct Flags* flags, char* curr_read, char* prev_
 void iterate_over_lines(struct Files* files, struct Flags* flags, struct Reads* reads, struct GC_data* gc_data, int* occurence_count) {
     while (!feof(files->fasta_file)) {
         fscanf(files->fasta_file, "%s\n", reads->curr_read);
-        // seq stuff here
-        if (reads->curr_read[0] == '>') {
-            strcpy(reads->prev_read, "");
-            fscanf(files->fasta_file, "%s\n", reads->curr_read);
-        }
-        if (files->merge_file != NULL) {
-            fprintf(files->merge_file, "%s\n", reads->curr_read);
-        }
-        change_lowercase(reads->curr_read);
-        if (flags[1].flag_raised != false) {  // gc
-            GC_count(flags, reads->curr_read, gc_data, files);
-        }
-        if (flags[2].flag_raised != false) {  // kmer
-            // find_all_kmer_permutations(); 
-            // not implemented yet
-        }
-        if (flags[3].flag_raised != false) {  // match
-            matching_occurences_count(flags, reads->curr_read, reads->prev_read, occurence_count);
-            strcpy(reads->prev_read, reads->curr_read);
+        bool prev_header = false;
+        if (flags[5].flag_raised == false ||
+            does_header_match(flags[5].flag_value, reads->curr_read, &prev_header) != false ||
+            prev_header != false) {
+            if (reads->curr_read[0] == '>') {
+                strcpy(reads->prev_read, "");
+                fscanf(files->fasta_file, "%s\n", reads->curr_read);
+            }
+            if (files->merge_file != NULL) {
+                fprintf(files->merge_file, "%s\n", reads->curr_read);
+            }
+            change_lowercase(reads->curr_read);
+            if (flags[1].flag_raised != false) {  // gc
+                GC_count(flags, reads->curr_read, gc_data, files);
+            }
+            if (flags[3].flag_raised != false) {  // match
+                matching_occurences_count(flags, reads->curr_read, reads->prev_read, occurence_count);
+                strcpy(reads->prev_read, reads->curr_read);
+            }
         }
     }
 }
@@ -304,7 +313,6 @@ void parse_fasta(struct Flags* flags) {
     strcpy(reads.curr_read, "");
     strcpy(reads.prev_read, "");
 
-    // creates the variables used in GC_count
     struct GC_data gc_data;
     gc_data.chunk_num = 1;
     gc_data.chunk_size = strtol(flags[1].flag_value, NULL, 10);
@@ -316,7 +324,10 @@ void parse_fasta(struct Flags* flags) {
     int occurence_count = 0;
     struct Files files;
     files.fasta_file = fopen(flags[0].flag_value, "r");
-            
+    if (files.fasta_file == NULL) {
+        printf("The fasta file %s does not appear to exist. Exiting program.\n", flags[0].flag_value);
+        return;
+    }
 
     if (flags[2].flag_raised != false) {
         files.out_file = fopen(flags[2].flag_value, "w");
@@ -354,7 +365,7 @@ int main(int argc, char** argv) {
 
     int i;
     for (i = 0; i < number_of_flags; i++) {
-        flags[i].flag_raised = false;  // flag 0: file, flag 1: gc, flag 2: out file, flag 3: match, flag 4: merge, flag 5: seq.
+        flags[i].flag_raised = false;
         strcpy(flags[i].flag_value, "");
     }
 
