@@ -6,7 +6,7 @@
 
 // typedef enum { false, true } bool;
 
-typedef struct Flags {  // flag 0: file, flag 1: gc, flag 2: out file, flag 3: match, flag 4: merge, flag 5: seq.
+typedef struct Flags {  // flag 0: file, flag 1: gc, flag 2: out file, flag 3: match, flag 4: merge, flag 5: seq, flag 6: range.
     bool flag_raised;
     char flag_value[100];
 } Flags;
@@ -28,6 +28,11 @@ typedef struct Files {
     FILE* out_file;
 } Files;
 
+typedef struct Range_data {
+    int start;
+    int end;
+    char seq[10000];
+} Range_data;
 
 /******************************
 *   Changes input into uppercase. 
@@ -62,6 +67,15 @@ bool does_header_match(char* seq_search_string, char* curr_read, bool* prev_head
         return false;
     }
 }
+
+/******************************
+*   Parses the input of the -seq option and splits the input by ,. 
+*       If the sequence text passed in contains the same 
+*******************************/
+void set_range(char* range_string, struct Range_data* range_data) {
+    // split the range_string by :
+}
+
 /******************************
 *   Ensures input is workable and parses the input for the settings the program should use.
 *******************************/
@@ -78,6 +92,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
         {"merge", required_argument, NULL, 'g'},
         {"seq", required_argument, NULL, 's'},
         {"out", required_argument, NULL, 'o'},
+        {"range", required_argument, NULL, 'r'}
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
@@ -126,6 +141,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 printf("\t-seq <options> : options must be separated by , or -\n");
                 printf("\t\t-seq <seq_numbers> : performes operations on only the sequence numbers given.\n");
                 printf("\t\t-seq <name> : performes operations on the named sequences.\n");
+                printf("\t-range <start:end> : outputs sequence between a range.\n");
                 printf("\t-out <filename> : outputs data to file.\n\n");
                 argument_legality = -1;
                 break;
@@ -140,6 +156,12 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                 flags[5].flag_raised = true;
                 strcpy(flags[5].flag_value, optarg);
                 printf("Carrying out operations only on selected sequences using sequence identifier string: %s.\n", flags[5].flag_value);
+                break;
+            case 'r':
+                argument_legality = 0;
+                flags[6].flag_raised = true;
+                strcpy(flags[6].flag_value, optarg);
+                printf("Outputting sequence between %s.\n", flags[6].flag_value);
                 break;
             case '?':
                 printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
@@ -158,7 +180,8 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct Flags* flags) 
                flags[2].flag_raised == false &&
                flags[3].flag_raised == false &&
                flags[4].flag_raised == false &&
-               flags[5].flag_raised == false) {
+               flags[5].flag_raised == false &&
+               flags[6].flag_raised == false) {
         printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
     }
@@ -329,6 +352,9 @@ void parse_fasta(struct Flags* flags) {
         return;
     }
 
+    struct Range_data range_data;
+
+
     if (flags[2].flag_raised != false) {
         files.out_file = fopen(flags[2].flag_value, "w");
         if (flags[4].flag_raised != false) {
@@ -359,7 +385,7 @@ void parse_fasta(struct Flags* flags) {
 
 
 int main(int argc, char** argv) {
-    int number_of_flags = 6;
+    int number_of_flags = 7;
     struct Flags flags[number_of_flags];
     int error_flag = 0;
 
