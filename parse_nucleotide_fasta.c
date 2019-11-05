@@ -53,7 +53,7 @@ void change_lowercase(char* text) {
  *******************************/
 bool does_header_match(char* seq_search_string, char* curr_read, bool* prev_header) {
     if (curr_read[0] != '>') {
-        return false;
+        return prev_header;
     } else {
         char search_cpy[600];
         strcpy(search_cpy, seq_search_string);
@@ -162,15 +162,15 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
  *   Prints output to either command line or to the file passed in from -out <file>.
  *******************************/
 void print_output(All_flags* all_flags, GC_data* gc_data, int occurence_count, Files* files, bool called_from_gc_func) {
-    if (called_from_gc_func != false) {
+    if (called_from_gc_func == true) {
         fprintf(files->out_file, "Chunk number: %d A: %d T: %d C: %d G:%d\n", gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
         fprintf(files->out_file, "Chunk: %d GC content: %f\n\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
     } else {
-        if (all_flags->gc.raised != false) {
+        if (all_flags->gc.raised == true) {
             fprintf(files->out_file, "Total size of final chunk: %d. Chunk num: %d A: %d T: %d C: %d G:%d\n", gc_data->site_values[4], gc_data->chunk_num, gc_data->site_values[0], gc_data->site_values[1], gc_data->site_values[2], gc_data->site_values[3]);
             fprintf(files->out_file, "Chunk: %d GC content: %f\n\n", gc_data->chunk_num, (((float)gc_data->site_values[2] + (float)gc_data->site_values[3]) / (float)gc_data->site_values[4]) * 100);
         }
-        if (all_flags->match.raised != false) {  // need different file output here
+        if (all_flags->match.raised == true) {  // need different file output here
             fprintf(files->out_file, "Total number of occurences of %s in the file was %d\n\n", all_flags->match.value, occurence_count);
         }
     }
@@ -257,10 +257,12 @@ void matching_occurences_count(All_flags* all_flags, char* curr_read, char* prev
  *   Iterates over the lines of the opened fasta file.
  *******************************/
 void iterate_over_lines(Files* files, All_flags* all_flags, Reads* reads, GC_data* gc_data, int* occurence_count) {
+    bool prev_header = false;
+    
     while (!feof(files->fasta_file)) {
         fscanf(files->fasta_file, "%s\n", reads->curr_read);
-        bool prev_header = false;
-        if (all_flags->seq.raised == false || does_header_match(all_flags->seq.value, reads->curr_read, &prev_header) != false || prev_header != false) {
+        prev_header = does_header_match(all_flags->seq.value, reads->curr_read, &prev_header);
+        if (all_flags->seq.raised == false || prev_header == true) {
             if (reads->curr_read[0] == '>') {
                 strcpy(reads->prev_read, "");
                 fscanf(files->fasta_file, "%s\n", reads->curr_read);
@@ -269,10 +271,10 @@ void iterate_over_lines(Files* files, All_flags* all_flags, Reads* reads, GC_dat
                 fprintf(files->merge_file, "%s\n", reads->curr_read);
             }
             change_lowercase(reads->curr_read);
-            if (all_flags->gc.raised != false) {  // gc
+            if (all_flags->gc.raised == true) {  // gc
                 GC_count(all_flags, reads->curr_read, gc_data, files);
             }
-            if (all_flags->match.raised != false) {  // match
+            if (all_flags->match.raised == true) {  // match
                 matching_occurences_count(all_flags, reads->curr_read, reads->prev_read, occurence_count);
                 strcpy(reads->prev_read, reads->curr_read);
             }
@@ -305,12 +307,12 @@ void parse_fasta(All_flags* all_flags) {
         return;
     }
 
-    if (all_flags->file_out.raised != false) {
+    if (all_flags->file_out.raised == true) {
         files.out_file = fopen(all_flags->file_out.value, "w");
     } else {
         files.out_file = stdout;
     }
-    if (all_flags->merge.raised != false) {
+    if (all_flags->merge.raised == true) {
         files.merge_file = fopen(all_flags->merge.value, "w");
         fprintf(files.merge_file, ">Sequences_Merged\n");
         iterate_over_lines(&files, all_flags, &reads, &gc_data, &occurence_count);
@@ -320,7 +322,7 @@ void parse_fasta(All_flags* all_flags) {
         iterate_over_lines(&files, all_flags, &reads, &gc_data, &occurence_count);
         print_output(all_flags, &gc_data, occurence_count, &files, false);
     }
-    if (all_flags->file_out.raised != false) {
+    if (all_flags->file_out.raised == true) {
         fclose(files.out_file);
     }
 
