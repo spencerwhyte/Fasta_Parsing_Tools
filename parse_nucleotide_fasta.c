@@ -53,7 +53,7 @@ void change_lowercase(char* text) {
  *******************************/
 bool does_header_match(char* seq_search_string, char* curr_read, bool* prev_header) {
     if (curr_read[0] != '>') {
-        return prev_header;
+        return *prev_header;
     } else {
         char search_cpy[600];
         strcpy(search_cpy, seq_search_string);
@@ -257,17 +257,17 @@ void matching_occurences_count(All_flags* all_flags, char* curr_read, char* prev
  *   Iterates over the lines of the opened fasta file.
  *******************************/
 void iterate_over_lines(Files* files, All_flags* all_flags, Reads* reads, GC_data* gc_data, int* occurence_count) {
-    bool prev_header = false;
+    bool prev_header_match = false;
     
     while (!feof(files->fasta_file)) {
         fscanf(files->fasta_file, "%s\n", reads->curr_read);
-        prev_header = does_header_match(all_flags->seq.value, reads->curr_read, &prev_header);
-        if (all_flags->seq.raised == false || prev_header == true) {
+        prev_header_match = does_header_match(all_flags->seq.value, reads->curr_read, &prev_header_match);
+        if (all_flags->seq.raised == false || prev_header_match == true) {
             if (reads->curr_read[0] == '>') {
                 strcpy(reads->prev_read, "");
                 fscanf(files->fasta_file, "%s\n", reads->curr_read);
             }
-            if (files->merge_file != NULL) {
+            if (all_flags->merge.raised == true) {
                 fprintf(files->merge_file, "%s\n", reads->curr_read);
             }
             change_lowercase(reads->curr_read);
