@@ -4,15 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-<<<<<<< HEAD
-typedef struct Flags {  // flag 0: file, flag 1: gc, flag 2: out file, flag 3: match, flag 4: merge, flag 5: seq, flag 6: range.
-    bool flag_raised;
-    char flag_value[100];
-=======
 typedef struct Flags {
     bool raised;
     char value[100];
->>>>>>> aba6b61937ded2c0eecf604a8f9408eda13afcd1
 } Flags;
 
 typedef struct All_flags {
@@ -42,15 +36,6 @@ typedef struct Files {
     FILE* out_file;
 } Files;
 
-<<<<<<< HEAD
-typedef struct Range_data {
-    int start;
-    int end;
-    char seq[10000];
-} Range_data;
-
-=======
->>>>>>> aba6b61937ded2c0eecf604a8f9408eda13afcd1
 /******************************
  *   Changes input into uppercase.
  *******************************/
@@ -86,14 +71,6 @@ bool does_header_match(char* seq_search_string, char* curr_read, bool* prev_head
 }
 
 /******************************
-*   Parses the input of the -seq option and splits the input by ,. 
-*       If the sequence text passed in contains the same 
-*******************************/
-void set_range(char* range_string, struct Range_data* range_data) {
-    // split the range_string by :
-}
-
-/******************************
  *   Ensures input is workable and parses the input for the settings the program should use.
  *******************************/
 int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all_flags) {
@@ -102,21 +79,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
         return -1;
     }
 
-<<<<<<< HEAD
-    static struct option long_options[] = {
-        {"file", required_argument, NULL, 'f'},
-        {"gc", optional_argument, NULL, 'c'},
-        {"match", required_argument, NULL, 'm'},
-        {"merge", required_argument, NULL, 'g'},
-        {"seq", required_argument, NULL, 's'},
-        {"out", required_argument, NULL, 'o'},
-        {"range", required_argument, NULL, 'r'}
-        {"help", no_argument, NULL, 'h'},
-        {NULL, 0, NULL, 0}
-    };
-=======
     static struct option long_options[] = {{"file", required_argument, NULL, 'f'}, {"gc", optional_argument, NULL, 'c'}, {"match", required_argument, NULL, 'm'}, {"merge", required_argument, NULL, 'g'}, {"print", no_argument, NULL, 'p'}, {"seq", required_argument, NULL, 's'}, {"out", required_argument, NULL, 'o'}, {"help", no_argument, NULL, 'h'}, {NULL, 0, NULL, 0}};
->>>>>>> aba6b61937ded2c0eecf604a8f9408eda13afcd1
 
     int opts;
     int argument_legality = -1;
@@ -185,12 +148,6 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
                 strcpy(all_flags->seq.value, optarg);
                 printf("Carrying out operations only on selected sequences using sequence identifier string: %s.\n", all_flags->seq.value);
                 break;
-            case 'r':
-                argument_legality = 0;
-                flags[6].flag_raised = true;
-                strcpy(flags[6].flag_value, optarg);
-                printf("Outputting sequence between %s.\n", flags[6].flag_value);
-                break;
             case '?':
                 printf("Unknown or incorrect argument entered, exiting program. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
                 argument_legality = -1;
@@ -204,16 +161,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
     if (all_flags->file_in.raised == false) {
         printf("A fasta file must be passed in. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
-<<<<<<< HEAD
-    } else if (flags[1].flag_raised == false &&
-               flags[2].flag_raised == false &&
-               flags[3].flag_raised == false &&
-               flags[4].flag_raised == false &&
-               flags[5].flag_raised == false &&
-               flags[6].flag_raised == false) {
-=======
     } else if (all_flags->gc.raised == false && all_flags->file_out.raised == false && all_flags->match.raised == false && all_flags->merge.raised == false && all_flags->seq.raised == false && all_flags->print.raised == false) {
->>>>>>> aba6b61937ded2c0eecf604a8f9408eda13afcd1
         printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
     }
@@ -326,17 +274,16 @@ void iterate_over_lines(Files* files, All_flags* all_flags, Reads* reads, GC_dat
         fscanf(files->fasta_file, "%s\n", reads->curr_read);
         prev_header_match = does_header_match(all_flags->seq.value, reads->curr_read, &prev_header_match);
         if (all_flags->seq.raised == false || prev_header_match == true) {
-            if (all_flags->print.raised == true) {
-                if (header_printed == false) {
-                    fprintf(files->out_file, "%s\n", reads->curr_read);
-                    header_printed = true;
-                } else {
-                    fprintf(files->out_file, "%s\n", reads->curr_read);
-                }
+            if (all_flags->print.raised == true && header_printed == false) {
+                fprintf(files->out_file, "%s\n", reads->curr_read);
+                header_printed = true;
             }
             if (reads->curr_read[0] == '>') {
                 strcpy(reads->prev_read, "");
                 fscanf(files->fasta_file, "%s\n", reads->curr_read);
+            }
+            if (all_flags->print.raised == true) {
+                fprintf(files->out_file, "%s\n", reads->curr_read);
             }
             if (all_flags->merge.raised == true) {
                 fprintf(files->merge_file, "%s\n", reads->curr_read);
@@ -378,27 +325,8 @@ void parse_fasta(All_flags* all_flags) {
         return;
     }
 
-<<<<<<< HEAD
-    struct Range_data range_data;
-
-
-    if (flags[2].flag_raised != false) {
-        files.out_file = fopen(flags[2].flag_value, "w");
-        if (flags[4].flag_raised != false) {
-            files.merge_file = fopen(flags[4].flag_value, "w");
-            fprintf(files.merge_file, ">Sequences_Merged\n");
-            iterate_over_lines(&files, flags, &reads, &gc_data, &occurence_count);
-            print_output(flags, &gc_data, occurence_count, &files, false);
-            fclose(files.merge_file);
-        } else {
-            iterate_over_lines(&files, flags, &reads, &gc_data, &occurence_count);
-            print_output(flags, &gc_data, occurence_count, &files, false);
-        }
-        fclose(files.out_file);
-=======
     if (all_flags->file_out.raised == true) {
         files.out_file = fopen(all_flags->file_out.value, "w");
->>>>>>> aba6b61937ded2c0eecf604a8f9408eda13afcd1
     } else {
         files.out_file = stdout;
     }
@@ -420,12 +348,7 @@ void parse_fasta(All_flags* all_flags) {
 }
 
 int main(int argc, char** argv) {
-<<<<<<< HEAD
-    int number_of_flags = 7;
-    struct Flags flags[number_of_flags];
-=======
     All_flags all_flags = {0};
->>>>>>> aba6b61937ded2c0eecf604a8f9408eda13afcd1
     int error_flag = 0;
 
     error_flag = ensure_legal_arguments(argc, argv, &all_flags);
