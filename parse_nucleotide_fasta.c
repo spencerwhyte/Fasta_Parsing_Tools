@@ -15,6 +15,7 @@ typedef struct All_flags {
     Flags file_out;
     Flags match;
     Flags merge;
+    Flags print;
     Flags seq;
 } All_flags;
 
@@ -77,7 +78,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
         return -1;
     }
 
-    static struct option long_options[] = {{"file", required_argument, NULL, 'f'}, {"gc", optional_argument, NULL, 'c'}, {"match", required_argument, NULL, 'm'}, {"merge", required_argument, NULL, 'g'}, {"seq", required_argument, NULL, 's'}, {"out", required_argument, NULL, 'o'}, {"help", no_argument, NULL, 'h'}, {NULL, 0, NULL, 0}};
+    static struct option long_options[] = {{"file", required_argument, NULL, 'f'}, {"gc", optional_argument, NULL, 'c'}, {"match", required_argument, NULL, 'm'}, {"merge", required_argument, NULL, 'g'}, {"print", no_argument, NULL, 'p'}, {"seq", required_argument, NULL, 's'}, {"out", required_argument, NULL, 'o'}, {"help", no_argument, NULL, 'h'}, {NULL, 0, NULL, 0}};
 
     int opts;
     int argument_legality = -1;
@@ -120,6 +121,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
                 printf("\t\t-gc=<x> : gc count per x bases.\n");
                 printf("\t-match <string> : searches for all instances of a string. (only words for same case searches)\n");
                 printf("\t-merge <merged file name> : merges sequences into one and outputs result into file.\n");
+                printf("\t-print : prints sequences from the fasta file.\n");
                 printf("\t-seq <options> : options must be separated by , or -\n");
                 printf("\t\t-seq <seq_numbers> : performes operations on only the sequence numbers given.\n");
                 printf("\t\t-seq <name> : performes operations on the named sequences.\n");
@@ -131,6 +133,12 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
                 all_flags->merge.raised = true;
                 strcpy(all_flags->merge.value, optarg);
                 printf("Merging sequences into file: %s.\n", all_flags->merge.value);
+                break;
+            case 'p':
+                argument_legality = 0;
+                all_flags->print.raised = true;
+                // strcpy(all_flags->print.value, optarg);
+                printf("Printing : %s.\n", all_flags->print.value);
                 break;
             case 's':
                 argument_legality = 0;
@@ -151,7 +159,7 @@ int ensure_legal_arguments(int argcount, char** argvalues, struct All_flags* all
     if (all_flags->file_in.raised == false) {
         printf("A fasta file must be passed in. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
-    } else if (all_flags->gc.raised == false && all_flags->file_out.raised == false && all_flags->match.raised == false && all_flags->merge.raised == false && all_flags->seq.raised == false) {
+    } else if (all_flags->gc.raised == false && all_flags->file_out.raised == false && all_flags->match.raised == false && all_flags->merge.raised == false && all_flags->seq.raised == false && all_flags->print.raised == false) {
         printf("No process arguments entered, select a process for the program carry out. Please see maunal or enter ./parse_nucleotide_fasta.out -help\n");
         argument_legality = -1;
     }
@@ -258,11 +266,20 @@ void matching_occurences_count(All_flags* all_flags, char* curr_read, char* prev
  *******************************/
 void iterate_over_lines(Files* files, All_flags* all_flags, Reads* reads, GC_data* gc_data, int* occurence_count) {
     bool prev_header_match = false;
-    
+    bool header_printed = false;
+
     while (!feof(files->fasta_file)) {
         fscanf(files->fasta_file, "%s\n", reads->curr_read);
         prev_header_match = does_header_match(all_flags->seq.value, reads->curr_read, &prev_header_match);
         if (all_flags->seq.raised == false || prev_header_match == true) {
+            if (all_flags->print.raised == true) {
+                if (header_printed == false) {
+                    fprintf(files->out_file, "%s\n", reads->curr_read);
+                    header_printed = true;
+                } else {
+                    fprintf(files->out_file, "%s\n", reads->curr_read);
+                }
+            }
             if (reads->curr_read[0] == '>') {
                 strcpy(reads->prev_read, "");
                 fscanf(files->fasta_file, "%s\n", reads->curr_read);
@@ -331,7 +348,6 @@ void parse_fasta(All_flags* all_flags) {
 
 int main(int argc, char** argv) {
     All_flags all_flags = {0};
-
     int error_flag = 0;
 
     error_flag = ensure_legal_arguments(argc, argv, &all_flags);
